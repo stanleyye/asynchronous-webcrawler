@@ -15,6 +15,7 @@ async def crawl(aLink, originalBaseUrl):
         return
     else:
         try:
+            # run the request in a different thread
             futureReq = loop.run_in_executor(None, requests.get, aLink)
             req = await futureReq
         except requests.exceptions.RequestException as e:
@@ -25,50 +26,50 @@ async def crawl(aLink, originalBaseUrl):
             print(aLink)
             print("Status:", req.status_code)
 
-        soup = BeautifulSoup(req.text, "html.parser")
+            soup = BeautifulSoup(req.text, "html.parser")
 
-        for link in soup.find_all("a", href=True):
-            if (link.get("href").startswith("http")):
+            for link in soup.find_all("a", href=True):
+                if (link.get("href").startswith("http")):
 
-                # if case is necessary to prevent printing
-                # same link multiple times
-                if ((link.get('href') in linksVisited) or
-                   (not(aLink.startswith(originalBaseUrl)))):
+                    # if case is necessary to prevent printing
+                    # same link multiple times
+                    if ((link.get('href') in linksVisited) or
+                       (not(aLink.startswith(originalBaseUrl)))):
+                        pass
+                    else:
+                        await crawl(link.get('href'), originalBaseUrl)
+
+                elif (link.get('href').startswith("javascript:")):
                     pass
                 else:
-                    crawl(link.get('href'), originalBaseUrl)
+                    linkFullUrl = urljoin(originalBaseUrl, link.get('href'))
 
-            elif (link.get('href').startswith("javascript:")):
-                pass
-            else:
-                linkFullUrl = urljoin(originalBaseUrl, link.get('href'))
+                    # if case is necessary to prevent
+                    # repeated printing of same link
+                    if ((linkFullUrl in linksVisited) or
+                       (not(linkFullUrl.startswith(originalBaseUrl)))):
+                        pass
+                    else:
+                        await crawl(linkFullUrl, originalBaseUrl)
 
-                # if case is necessary to prevent
-                # repeated printing of same link
-                if ((linkFullUrl in linksVisited) or
-                   (not(linkFullUrl.startswith(originalBaseUrl)))):
-                    pass
+            for sourceLink in soup.find_all(["img", "script"], src=True):
+                if (sourceLink.get("src").startswith("http")):
+
+                    if ((sourceLink.get("src") in linksVisited) or
+                       (not(aLink.startswith(originalBaseUrl)))):
+                        pass
+                    else:
+                        await crawl(sourceLink.get("src"), originalBaseUrl)
                 else:
-                    crawl(linkFullUrl, originalBaseUrl)
 
-        for sourceLink in soup.find_all(["img", "script"], src=True):
-            if (sourceLink.get("src").startswith("http")):
+                    srcLinkFullUrl = urljoin(originalBaseUrl,
+                                             sourceLink.get("src"))
 
-                if ((sourceLink.get("src") in linksVisited) or
-                   (not(aLink.startswith(originalBaseUrl)))):
-                    pass
-                else:
-                    crawl(sourceLink.get("src"), originalBaseUrl)
-            else:
-
-                srcLinkFullUrl = urljoin(originalBaseUrl,
-                                         sourceLink.get("src"))
-
-                if ((srcLinkFullUrl in linksVisited) or
-                   (not(aLink.startswith(originalBaseUrl)))):
-                    pass
-                else:
-                    crawl(srcLinkFullUrl, originalBaseUrl)
+                    if ((srcLinkFullUrl in linksVisited) or
+                       (not(aLink.startswith(originalBaseUrl)))):
+                        pass
+                    else:
+                        await crawl(srcLinkFullUrl, originalBaseUrl)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Process a domain.")
