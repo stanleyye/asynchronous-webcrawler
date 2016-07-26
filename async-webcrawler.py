@@ -15,7 +15,8 @@ async def crawl(aLink, originalBaseUrl):
         return
     else:
         try:
-            req = await requests.get(aLink)
+            futureReq = loop.run_in_executor(None, requests.get, aLink)
+            req = await futureReq
         except requests.exceptions.RequestException as e:
             print(e)
             exit()
@@ -67,7 +68,7 @@ async def crawl(aLink, originalBaseUrl):
                    (not(aLink.startswith(originalBaseUrl)))):
                     pass
                 else:
-                    crawl(srcLinkFullUrl, riginalBaseUrl)
+                    crawl(srcLinkFullUrl, originalBaseUrl)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Process a domain.")
@@ -76,9 +77,10 @@ if __name__ == '__main__':
 
     loop = asyncio.get_event_loop()
     if (args.link.startswith("http://") or args.link.startswith("https://")):
-        crawl(args.link, args.link)
+        loop.run_until_complete(crawl(args.link, args.link))
     else:
-        crawl("http://" + args.link, "http://" + args.link)
+        loop.run_until_complete(crawl("http://" + args.link,
+                                      "http://" + args.link))
     loop.close()
 
     print("There is a total of", len(linksVisited),
