@@ -12,18 +12,10 @@ linksVisited = {}
 q = asyncio.Queue()
 
 async def consumeLinks():
-    # print("consume links")
 
     while True:
-        # print("hello")
         value = await q.get()
-        # print(value)
-
         await crawl(value[0], value[1])
-
-
-    # print("consumelinks1")
-
 
 
 async def crawl(aLink, originalBaseUrl):
@@ -34,7 +26,6 @@ async def crawl(aLink, originalBaseUrl):
     else:
         try:
             # run the request in a different thread
-
             # req = requests.get(aLink)
             futureReq = loop.run_in_executor(None, requests.get, aLink)
             req = await futureReq
@@ -43,7 +34,6 @@ async def crawl(aLink, originalBaseUrl):
             print(e)
             exit()
         else:
-            # print(count)
             print(aLink)
             print("Status:", req.status_code)
             linksVisited[aLink] = 1
@@ -60,7 +50,6 @@ async def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        # print(link.get('href'))
                         await q.put([link.get('href'), originalBaseUrl])
 
                 elif (link.get('href').startswith("javascript:")):
@@ -74,7 +63,6 @@ async def crawl(aLink, originalBaseUrl):
                        (not(linkFullUrl.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        # print(linkFullUrl)
                         await q.put([linkFullUrl, originalBaseUrl])
 
             for sourceLink in soup.find_all(["img", "script"], src=True):
@@ -84,7 +72,6 @@ async def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        # print(sourceLink.get("src"))
                         await q.put([sourceLink.get("src"), originalBaseUrl])
                 else:
 
@@ -95,7 +82,6 @@ async def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        # print(srcLinkFullUrl)
                         await q.put([srcLinkFullUrl, originalBaseUrl])
 
 
@@ -109,7 +95,7 @@ if __name__ == '__main__':
         loop.create_task(crawl(args.link, args.link))
     else:
         loop.create_task(crawl("http://" + args.link,
-                                      "http://" + args.link))
+                               "http://" + args.link))
 
     loop.create_task(consumeLinks())
     loop.run_forever()
