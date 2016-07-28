@@ -2,6 +2,7 @@
 
 import asyncio
 import argparse
+import random
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
@@ -10,17 +11,22 @@ count = 0
 linksVisited = {}
 q = asyncio.Queue()
 
-
 async def consumeLinks():
-    print("consume links")
-    while (True):
+    # print("consume links")
+
+    while True:
+        # print("hello")
         value = await q.get()
-        print(value[0])
-        print("Status:", value[1].status_code)
+        # print(value)
+
+        await crawl(value[0], value[1])
+
+
+    # print("consumelinks1")
 
 
 
-def crawl(aLink, originalBaseUrl):
+async def crawl(aLink, originalBaseUrl):
 
     if ((aLink in linksVisited) or
        (not(aLink.startswith(originalBaseUrl)))):
@@ -28,18 +34,18 @@ def crawl(aLink, originalBaseUrl):
     else:
         try:
             # run the request in a different thread
-            # futureReq = loop.run_in_executor(None, requests.get, aLink)
-            # req = await futureReq
 
-            req = requests.get(aLink)
-            print(count)
-
+            # req = requests.get(aLink)
+            futureReq = loop.run_in_executor(None, requests.get, aLink)
+            req = await futureReq
 
         except requests.exceptions.RequestException as e:
             print(e)
             exit()
         else:
-            q.put([aLink, req])
+            # print(count)
+            print(aLink)
+            print("Status:", req.status_code)
             linksVisited[aLink] = 1
 
             soup = BeautifulSoup(req.text, "html.parser")
@@ -54,7 +60,8 @@ def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        crawl(link.get('href'), originalBaseUrl)
+                        # print(link.get('href'))
+                        await q.put([link.get('href'), originalBaseUrl])
 
                 elif (link.get('href').startswith("javascript:")):
                     pass
@@ -67,7 +74,8 @@ def crawl(aLink, originalBaseUrl):
                        (not(linkFullUrl.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        crawl(linkFullUrl, originalBaseUrl)
+                        # print(linkFullUrl)
+                        await q.put([linkFullUrl, originalBaseUrl])
 
             for sourceLink in soup.find_all(["img", "script"], src=True):
                 if (sourceLink.get("src").startswith("http")):
@@ -76,7 +84,8 @@ def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        crawl(sourceLink.get("src"), originalBaseUrl)
+                        # print(sourceLink.get("src"))
+                        await q.put([sourceLink.get("src"), originalBaseUrl])
                 else:
 
                     srcLinkFullUrl = urljoin(originalBaseUrl,
@@ -86,7 +95,9 @@ def crawl(aLink, originalBaseUrl):
                        (not(aLink.startswith(originalBaseUrl)))):
                         pass
                     else:
-                        crawl(srcLinkFullUrl, originalBaseUrl)
+                        # print(srcLinkFullUrl)
+                        await q.put([srcLinkFullUrl, originalBaseUrl])
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Process a domain.")
